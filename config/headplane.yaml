@@ -1,3 +1,6 @@
+# Official reference: https://headplane.net/configuration/
+# Full config example: https://github.com/tale/headplane/blob/main/config.example.yaml
+
 server:
   host: "0.0.0.0"
   port: 3000

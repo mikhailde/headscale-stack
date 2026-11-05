@@ -1,3 +1,5 @@
+# Official Caddyfile documentation: https://caddyserver.com/docs/caddyfile
+
 http://{$DOMAIN} {
     handle /generate_204 {
         respond 204

@@ -1,44 +1,62 @@
-# Headscale Stack
+<div align="center">
 
-[![Docker Compose](https://img.shields.io/badge/docker-compose-blue.svg)](https://docs.docker.com/compose/)
-[![Headscale](https://img.shields.io/badge/headscale-v0.27.1-blue)](https://github.com/juanfont/headscale)
-[![Headplane](https://img.shields.io/badge/headplane-latest-orange)](https://github.com/tale/headplane)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# 🌐 Headscale Stack
 
-Production-ready, declarative **Headscale** + **Headplane** stack with optional **Caddy** reverse proxy and automatic HTTPS.
+**Declarative Headscale + Headplane Docker Compose stack with an optional Caddy reverse proxy for automated HTTPS.**
 
----
+<p align="center">
+  <a href="https://docs.docker.com/compose/"><img src="https://img.shields.io/badge/Docker_Compose-v2-2496ED?style=flat&logo=docker&logoColor=white" alt="Docker Compose" /></a>
+  <a href="https://github.com/juanfont/headscale"><img src="https://img.shields.io/badge/Headscale-latest-3949AB?style=flat&logo=tailscale&logoColor=white" alt="Headscale" /></a>
+  <a href="https://github.com/tale/headplane"><img src="https://img.shields.io/badge/Headplane-latest-F97316?style=flat" alt="Headplane" /></a>
+  <a href="https://caddyserver.com/"><img src="https://img.shields.io/badge/Caddy-v2-1F88C0?style=flat&logo=caddy&logoColor=white" alt="Caddy" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat" alt="License" /></a>
+</p>
 
-## ⚡ Features
+[Features](#features) • [Architecture](#architecture) • [Quick Start](#quick-start) • [Connecting Devices](#connecting-devices)  
+[Reverse Proxy](#reverse-proxy-options) • [Client Recipes](#client-deployment-recipes) • [CLI Cheat Sheet](#headscale-cli-cheat-sheet) • [References](#references--acknowledgements)
 
-- **100% Declarative & GitOps-Ready**: Zero host-level bash scripts or runtime string replacements. The entire stack is configured via a single `.env` file.
-- **Modern Web Interface**: Integrated with [Headplane](https://github.com/tale/headplane) for visual node management, DNS configuration, and ACL rules.
-- **Flexible Reverse Proxy**:
-  - **Built-in Caddy**: Automatic Let's Encrypt TLS and HTTP Basic Auth out of the box (`COMPOSE_PROFILES=caddy`).
-  - **External Proxy Ready**: Seamlessly plug into your existing Traefik, Nginx, or Nginx Proxy Manager.
-- **Secure Persistence**: Databases and encryption keys are stored inside isolated Docker named volumes.
-- **Official Compliance**: Implements official Headscale recommendations (WebSocket upgrade support, real client IP passing, and `/generate_204` captive portal handling).
+</div>
 
 ---
 
-## 📁 Repository Structure
+## Features
+
+- ⚙️ **100% Declarative & GitOps-Ready**: No host-level bash scripts or runtime string manipulations. The entire stack is configured via a single `.env` file.
+- 🖥️ **Modern Web Interface**: Bundled with [Headplane](https://github.com/tale/headplane) for visual node management, ACL configuration, and MagicDNS controls.
+- 🔒 **Zero-Config Automatic TLS**: Built-in [Caddy](https://caddyserver.com/) reverse proxy provisions and renews Let's Encrypt / ZeroSSL certificates automatically.
+- 🔀 **Flexible Ingress**: Run the built-in Caddy proxy (`COMPOSE_PROFILES=caddy`) or seamlessly connect your existing Nginx Proxy Manager, Traefik, or host Nginx.
+- 🛡️ **Container Health & Order**: Headscale health checks (`headscale health`) ensure Headplane boots strictly when the control plane and database are ready.
+- 📦 **Safe Data Persistence**: SQLite databases, TLS certificates, and session data live in isolated Docker Named Volumes—no host permission issues (`UID/GID`).
+- ⚡ **Tailscale Compliant**: Implements real client IP forwarding (`True-Client-IP`), WebSocket streaming, and mobile captive portal detection (`/generate_204`).
+
+## Architecture
 
 ```text
-headscale-stack/
-├── config/
-│   ├── Caddyfile             # Proxy configuration with automatic env interpolation
-│   ├── headplane.yaml        # Headplane web UI settings and Docker integration
-│   └── headscale.yaml        # Modern Headscale server configuration
-├── .env.example              # Single source of truth for all environment variables
-├── .gitignore                # Protects against leaking .env, keys, and databases
-├── compose.yaml              # Core multi-container Docker Compose manifest
-├── LICENSE                   # MIT License
-└── README.md                 # Complete documentation and client recipes
+                     ┌────────────────────────────────────────┐
+                     │          Internet / Clients            │
+                     └───────────────────┬────────────────────┘
+                                         │
+                   443/tcp (HTTPS)       │        3478/udp (STUN)
+             ┌───────────────────────────┴───────────────────────────┐
+             ▼                                                       ▼
+   ┌───────────────────┐                                   ┌───────────────────┐
+   │   Reverse Proxy   │                                   │                   │
+   │  (Caddy / NPM)    │                                   │                   │
+   └─────────┬─────────┘                                   │                   │
+             │                                             │                   │
+   ┌─────────┴──────────────────────┐                      │     Headscale     │
+   │ /admin*                        │ /*                   │  (Control Server) │
+   ▼                                ▼                      │                   │
+┌──────────────────────┐   ┌──────────────────────┐        │                   │
+│      Headplane       │──>│      Headscale       │<───────┤                   │
+│       (Web UI)       │   │     (API / Hub)      │        └───────────────────┘
+└──────────┬───────────┘   └──────────┬───────────┘                  │
+           │                          │                              │
+           ▼                          ▼                              ▼
+  [headplane-data]            [headscale-data]              [/var/run/docker.sock]
 ```
 
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Clone the repository
 ```bash
@@ -46,64 +64,126 @@ git clone https://github.com/mikhailde/headscale-stack.git
 cd headscale-stack
 ```
 
-### 2. Configure environment
+### 2. Prepare environment variables
 ```bash
 cp .env.example .env
 ```
-Edit `.env` and set:
-- `DOMAIN`: Your public domain (e.g. `hs.example.com`).
-- `HEADPLANE_COOKIE_SECRET`: Generate with `openssl rand -hex 16`.
-- `ADMIN_PASSWORD_HASH`: Generate with:
-  ```bash
-  docker run --rm caddy:latest caddy hash-password --plaintext "your_secure_password"
-  ```
+Edit `.env` and configure your settings:
+```ini
+DOMAIN=headscale.example.com
+COMPOSE_PROFILES=caddy
+```
 
-> ⚠️ **Cloudflare Notice**: If using Cloudflare DNS, set the proxy status to **DNS-only (grey cloud)**. Cloudflare Proxy blocks Tailscale WebSocket POST requests.
+Generate a secure 32-character hex secret for Headplane:
+```bash
+openssl rand -hex 16
+```
+*(Copy the output into `HEADPLANE_COOKIE_SECRET`)*
+
+Generate a bcrypt password hash for Caddy Basic Auth:
+```bash
+docker run --rm caddy:latest caddy hash-password --plaintext "your_secure_password"
+```
+*(Paste into `ADMIN_PASSWORD_HASH` in `.env`. Note: escape each `$` as `$$`, e.g. `$$2a$$14$$...`)*
+
+> [!WARNING]
+> **Cloudflare DNS Users**: If using Cloudflare DNS, set your DNS record proxy status to **DNS-only (grey cloud)**. Cloudflare Proxy blocks Tailscale WebSocket POST requests required by the protocol.
 
 ### 3. Launch the stack
 ```bash
 docker compose up -d
 ```
 
-### 4. Create an API Key and Access the Web UI
-Generate an API key for Headplane:
+### 4. Create an API Key & Access the Dashboard
+Generate a Headscale API key for Headplane:
 ```bash
 docker compose exec headscale headscale apikeys create --expiration 90d
 ```
-Open **`https://<your-domain>/admin`** in your browser, enter your Basic Auth credentials, and log into Headplane with the generated API key.
 
----
+Open **`https://<your-domain>/admin`** in your browser:
+1. Log in via HTTP Basic Auth using your configured `ADMIN_USER` and password.
+2. Enter the generated API key into Headplane to access the dashboard.
+3. Create your first user under **Users** (e.g. `default`). Clients require an existing user to register.
 
-## 🌐 Reverse Proxy Scenarios
+## Connecting Devices
+
+### Linux / macOS / Windows
+Run the following command in your terminal:
+```bash
+tailscale up --login-server https://<your-domain>
+```
+
+To authenticate automatically with a pre-auth key:
+```bash
+tailscale up --login-server https://<your-domain> --auth-key <preauth-key>
+```
+
+### iOS / Android
+1. Open the official Tailscale app.
+2. Open the menu → **Settings** → **Accounts** → **Use custom control server**.
+3. Enter your server URL: `https://<your-domain>`.
+
+## Reverse Proxy Options
 
 ### Option A: Built-in Caddy (Default)
-In `.env`, keep `COMPOSE_PROFILES=caddy`.
-Caddy handles automatic HTTPS and Basic Auth on ports `80` and `443`.
+Keep `COMPOSE_PROFILES=caddy` in `.env`. Caddy manages Let's Encrypt certificates, HTTP-to-HTTPS redirects, `/generate_204` responses, and basic auth out of the box.
 
-### Option B: External Reverse Proxy on the Host (Nginx / Caddy on host)
-1. In `.env`, set `COMPOSE_PROFILES=` (empty).
-2. Headscale listens on `127.0.0.1:8080`, and Headplane listens on `127.0.0.1:3000`.
-3. Proxy rules:
-   - Route `/admin*` -> `http://127.0.0.1:3000`
-   - Route `/` -> `http://127.0.0.1:8080` (Pass `True-Client-IP` and enable WebSockets).
+### Option B: External Reverse Proxy (Nginx Proxy Manager, Traefik, Host Nginx)
+1. In `.env`, set `COMPOSE_PROFILES=` (empty string).
+2. Connect your external proxy container to the stack network:
+   ```bash
+   docker network connect headscale-net <your-proxy-container-name>
+   ```
+3. Configure your proxy rules:
 
-### Option C: External Reverse Proxy in Docker (NPM / Traefik)
-Connect your proxy container to the `headscale-net` Docker network:
-```bash
-docker network connect headscale-net <your-proxy-container>
+| Route | Target | Protocol | Notes |
+| :--- | :--- | :--- | :--- |
+| `https://<domain>/admin*` | `http://headplane:3000` | HTTP | Enable WebSockets |
+| `https://<domain>/*` | `http://headscale:8080` | HTTP | Enable WebSockets, pass `True-Client-IP` |
+
+**Nginx Configuration Snippet:**
+```nginx
+# Pass real client IP to Headscale
+proxy_set_header True-Client-IP $remote_addr;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection $http_connection;
+proxy_http_version 1.1;
+
+# Captive portal detection for mobile devices
+location = /generate_204 {
+    return 204;
+}
+
+# Headplane Web UI
+location /admin {
+    proxy_pass http://headplane:3000;
+}
+
+# Headscale VPN Control Plane
+location / {
+    proxy_pass http://headscale:8080;
+}
 ```
-Route requests:
-- `/admin*` -> `http://headplane:3000`
-- `/*` -> `http://headscale:8080`
 
----
+## DERP (Relay) Configuration
 
-## 💻 Client Configurations (Docker Compose)
+Headscale allows relaying traffic when direct WireGuard P2P connections cannot be established through strict NATs:
 
-Deploy clients on other machines using standard Docker Compose.
+- **Embedded DERP Server**: Controlled via `DERP_SERVER_ENABLED=true/false` in `.env`. When enabled, Headscale serves STUN on port `3478/udp`.
+- **Global Tailscale DERP Map**: Configured in `config/headscale.yaml` under `derp.urls`. 
+  - To run in **100% private / air-gapped mode** without sending relay traffic to Tailscale Inc servers, set:
+    ```yaml
+    derp:
+      urls: []
+    ```
+
+## Client Deployment Recipes
+
+Deploy client nodes on other servers using Docker Compose.
 
 ### 1. Tailscale Exit Node (Full VPN Gateway `0.0.0.0/0`)
-Run this on a remote server/VPS to route all traffic through it:
+Use this recipe to turn a remote VPS into an exit node for browsing the internet:
 
 ```yaml
 services:
@@ -132,12 +212,12 @@ volumes:
   tailscale-state:
 ```
 
-### 2. Tailscale Server Node (Host Network Client)
-Run this on any server to securely connect it to your Tailnet:
+### 2. Tailscale Server Node (Host Network Endpoint)
+Use this recipe to join any Docker host directly into your private tailnet:
 
 ```yaml
 services:
-  tailscale:
+  tailscale-server:
     image: tailscale/tailscale:stable
     container_name: tailscale-server
     restart: unless-stopped
@@ -159,44 +239,68 @@ volumes:
   tailscale-state:
 ```
 
----
+## Headscale CLI Cheat Sheet
 
-## 🛠️ Headscale CLI Shortcuts
-
-Run Headscale management commands directly through Docker:
+Execute commands inside the Headscale container:
 
 ```bash
 # User Management
 docker compose exec headscale headscale users create <username>
 docker compose exec headscale headscale users list
 
-# Pre-Auth Keys (for joining nodes automatically)
+# Pre-Auth Keys (for automated client connections)
 docker compose exec headscale headscale preauthkeys create --user <username> --reusable --expiration 24h
 
-# Node (Machine) Management
+# Machine (Node) Management
 docker compose exec headscale headscale nodes list
 docker compose exec headscale headscale nodes expire --identifier <node-id>
 docker compose exec headscale headscale nodes delete --identifier <node-id>
+
+# Route Approval (for Subnet Routers & Exit Nodes)
+docker compose exec headscale headscale routes list
+docker compose exec headscale headscale routes enable --route <route-id>
 
 # Generate new Headplane API key
 docker compose exec headscale headscale apikeys create --expiration 90d
 ```
 
----
+## Security & Maintenance
 
-## 💾 Backup & Restore
+### Read-Only Configuration
+`config/headscale.yaml` and `config/headplane.yaml` are mounted read-only (`:ro`). This adheres to GitOps principles: configuration changes are version-controlled in Git rather than modified ad-hoc from a web browser.
 
-All critical state is stored in named volumes:
-- `headscale-data` (SQLite DB and private encryption keys)
-- `headplane-data` (Web sessions and UI persistence)
+### Single Sign-On (OIDC/SSO)
+If you configure Headplane with an OIDC provider (Google, GitHub, Keycloak), make sure to remove or bypass Caddy Basic Auth. Basic Auth will intercept `/admin/oidc/callback` and cause OAuth authentication flow failures.
 
-**Backup to archive:**
+### Backup & Restoration
+All persistent state (SQLite database and encryption keys) is stored in the `/var/lib/headscale` directory.
+
+#### Backup
+Briefly stop the service to flush the SQLite WAL journal into the main database, then copy the data directory directly from the container:
 ```bash
-docker run --rm -v headscale-data:/data -v $(pwd):/backup alpine tar czf /backup/headscale-backup.tar.gz -C /data .
+docker compose stop headscale
+docker compose cp headscale:/var/lib/headscale ./headscale_backup_$(date +%F_%H-%M)
+docker compose start headscale
 ```
 
----
+#### Restore
+To restore from a backup directory:
+```bash
+docker compose stop headscale
+docker compose cp ./headscale_backup_<timestamp>/. headscale:/var/lib/headscale/
+docker compose start headscale
+```
 
-## 📄 License
+## References & Acknowledgements
 
-This project is open-source software licensed under the [MIT License](LICENSE).
+Upstream documentation, master configurations, and project inspirations:
+
+- **[juanfont/headscale](https://github.com/juanfont/headscale)** — [Documentation](https://headscale.net/) • [Example `config.yaml`](https://github.com/juanfont/headscale/blob/main/config-example.yaml)
+- **[tale/headplane](https://github.com/tale/headplane)** — [Documentation](https://headplane.net/) • [Example `config.yaml`](https://github.com/tale/headplane/blob/main/config.example.yaml)
+- **[Caddy](https://caddyserver.com/)** — [Documentation](https://caddyserver.com/docs/)
+- **[Tailscale](https://tailscale.com/)** — [Docker Client Guide](https://tailscale.com/kb/1282/docker)
+- **[meerzulee/headscale-setup](https://github.com/meerzulee/headscale-setup)** — Original setup script that inspired this declarative stack.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
