@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+compose.override.*
+data/
+*.sqlite*
+*.db*
+*.key
+*.crt
+*.pem
+.DS_Store
+.idea/
+.vscode/

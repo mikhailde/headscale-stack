@@ -1,0 +1,80 @@
+services:
+  headscale:
+    image: headscale/headscale:0.27.1
+    container_name: headscale
+    restart: unless-stopped
+    command: serve
+    labels:
+      - "me.tale.headplane.target=headscale"
+    ports:
+      - "${HEADSCALE_STUN_PORT:-3478}:3478/udp"
+      - "127.0.0.1:${HEADSCALE_PORT:-8080}:8080"
+    volumes:
+      - ./config/headscale.yaml:/etc/headscale/config.yaml:ro
+      - headscale-data:/var/lib/headscale
+    environment:
+      - HEADSCALE_SERVER_URL=https://${DOMAIN}
+      - HEADSCALE_DERP_SERVER_ENABLED=${DERP_SERVER_ENABLED:-false}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  headplane:
+    image: ghcr.io/tale/headplane:latest
+    container_name: headplane
+    restart: unless-stopped
+    depends_on:
+      - headscale
+    ports:
+      - "127.0.0.1:${HEADPLANE_PORT:-3000}:3000"
+    volumes:
+      - ./config/headplane.yaml:/etc/headplane/config.yaml:ro
+      - ./config/headscale.yaml:/etc/headscale/config.yaml:ro
+      - headplane-data:/var/lib/headplane
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - HEADPLANE_SERVER__BASE_URL=https://${DOMAIN}
+      - HEADPLANE_SERVER__COOKIE_SECRET=${HEADPLANE_COOKIE_SECRET}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    profiles:
+      - caddy
+    depends_on:
+      - headscale
+      - headplane
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN}
+      - ADMIN_USER=${ADMIN_USER}
+      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
+    volumes:
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+volumes:
+  headscale-data:
+  headplane-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  default:
+    name: headscale-net
