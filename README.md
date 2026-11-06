@@ -22,13 +22,13 @@
 
 ## Features
 
-- ⚙️ **100% Declarative & GitOps-Ready**: No host-level bash scripts or runtime string manipulations. The entire stack is configured via a single `.env` file.
-- 🖥️ **Modern Web Interface**: Bundled with [Headplane](https://github.com/tale/headplane) for visual node management, ACL configuration, and MagicDNS controls.
-- 🔒 **Zero-Config Automatic TLS**: Built-in [Caddy](https://caddyserver.com/) reverse proxy provisions and renews Let's Encrypt / ZeroSSL certificates automatically.
-- 🌐 **Flexible Ingress**: Run the built-in Caddy proxy (`COMPOSE_PROFILES=caddy`) or seamlessly connect your existing Nginx Proxy Manager, Traefik, or host Nginx.
-- 🛡️ **Container Health & Order**: Headscale health checks (`headscale health`) ensure Headplane boots strictly when the control plane and database are ready.
-- 📦 **Safe Data Persistence**: SQLite databases, TLS certificates, and session data live in isolated Docker Named Volumes—no host permission issues (`UID/GID`).
-- ⚡ **Tailscale Compliant**: Implements real client IP forwarding (`True-Client-IP`), WebSocket streaming, and mobile captive portal detection (`/generate_204`).
+- **100% Declarative & GitOps-Ready**: No host-level bash scripts or runtime string manipulations. The entire stack is configured via a single `.env` file.
+- **Modern Web Interface**: Bundled with [Headplane](https://github.com/tale/headplane) for visual node management, ACL configuration, and MagicDNS controls.
+- **Zero-Config Automatic TLS**: Built-in [Caddy](https://caddyserver.com/) reverse proxy provisions and renews Let's Encrypt / ZeroSSL certificates automatically.
+- **Flexible Ingress**: Run the built-in Caddy proxy (`COMPOSE_PROFILES=caddy`) or seamlessly connect your existing Nginx Proxy Manager, Traefik, or host Nginx.
+- **Container Health & Order**: Headscale health checks (`headscale health`) ensure Headplane boots strictly when the control plane and database are ready.
+- **Safe Data Persistence**: SQLite databases, TLS certificates, and session data live in isolated Docker Named Volumes—no host permission issues (`UID/GID`).
+- **Tailscale Compliant**: Implements real client IP forwarding (`True-Client-IP`), WebSocket streaming, and mobile captive portal detection (`/generate_204`).
 
 ## Architecture
 
@@ -275,13 +275,13 @@ If this stack saved you time, please consider giving it a [⭐ Star](https://git
 
 ## References & Acknowledgements
 
-Upstream documentation, master configurations, and project inspirations:
+- [juanfont/headscale](https://github.com/juanfont/headscale) — [Documentation](https://headscale.net/) • [Example `config.yaml`](https://github.com/juanfont/headscale/blob/main/config-example.yaml)
+- [tale/headplane](https://github.com/tale/headplane) — [Documentation](https://headplane.net/) • [Example `config.yaml`](https://github.com/tale/headplane/blob/main/config.example.yaml)
+- [Caddy](https://caddyserver.com/) — [Documentation](https://caddyserver.com/docs/)
+- [Tailscale](https://tailscale.com/) — [Docker Client Guide](https://tailscale.com/kb/1282/docker)
+- [meerzulee/headscale-setup](https://github.com/meerzulee/headscale-setup) — Original setup script that inspired this declarative stack.
 
-- **[juanfont/headscale](https://github.com/juanfont/headscale)** — [Documentation](https://headscale.net/) • [Example `config.yaml`](https://github.com/juanfont/headscale/blob/main/config-example.yaml)
-- **[tale/headplane](https://github.com/tale/headplane)** — [Documentation](https://headplane.net/) • [Example `config.yaml`](https://github.com/tale/headplane/blob/main/config.example.yaml)
-- **[Caddy](https://caddyserver.com/)** — [Documentation](https://caddyserver.com/docs/)
-- **[Tailscale](https://tailscale.com/)** — [Docker Client Guide](https://tailscale.com/kb/1282/docker)
-- **[meerzulee/headscale-setup](https://github.com/meerzulee/headscale-setup)** — Original setup script that inspired this declarative stack.
+*Note: The Docker Compose stack and configurations are entirely hand-crafted. An LLM was used solely to format and proofread this documentation.*
 
 ## License
 
