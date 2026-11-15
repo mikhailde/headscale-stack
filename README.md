@@ -37,7 +37,7 @@
                      │          Internet / Clients            │
                      └───────────────────┬────────────────────┘
                                          │
-                   443/tcp (HTTPS)       │        3478/udp (STUN)
+            443/tcp+udp (HTTPS/H3)       │        3478/udp (STUN)
              ┌───────────────────────────┴───────────────────────────────┐
              ▼                                                           │
    ┌───────────────────┐                                                 │
@@ -82,7 +82,7 @@ openssl rand -hex 16
 
 Generate a bcrypt password hash for Caddy Basic Auth:
 ```bash
-docker run --rm caddy:latest caddy hash-password --plaintext "your_secure_password"
+docker run -it --rm caddy:alpine caddy hash-password
 ```
 *(Paste into `ADMIN_PASSWORD_HASH` in `.env`. Note: escape each `$` as `$$`, e.g. `$$2a$$14$$...`)*
 
@@ -100,10 +100,11 @@ Generate a Headscale API key for Headplane:
 docker compose exec headscale headscale apikeys create --expiration 90d
 ```
 
-Open `https://<your-domain>/admin` in your browser:
+Open `https://<your-domain>/admin/` in your browser:
 1. Log in via HTTP Basic Auth using your configured `ADMIN_USER` and password.
 2. Enter the generated API key into Headplane to access the dashboard.
 3. Create your first user under **Users** (e.g. `default`). Clients require an existing user to register.
+4. Configure and save an access policy under **Access Control (ACL)**. By default, `policy.mode: database` permits all-to-all traffic until a policy is saved.
 
 ## Connecting Devices
 
@@ -153,7 +154,7 @@ services:
       - TS_HOSTNAME=exit-node
       - TS_USERSPACE=false
       - TS_STATE_DIR=/var/lib/tailscale
-      - TS_ROUTES=0.0.0.0/0,::/0
+      - TS_NO_LOGS_NO_SUPPORT=true
       - TS_EXTRA_ARGS=--login-server=https://<your-domain> --advertise-exit-node
 volumes:
   tailscale-state:
@@ -188,10 +189,13 @@ services:
       - TS_HOSTNAME=server-main
       - TS_USERSPACE=false
       - TS_STATE_DIR=/var/lib/tailscale
+      - TS_NO_LOGS_NO_SUPPORT=true
       - TS_EXTRA_ARGS=--login-server=https://<your-domain>
 volumes:
   tailscale-state:
 ```
+
+> **Note**: With `TS_AUTH_ONCE=true`, changes to `TS_EXTRA_ARGS` are ignored on container restarts after initial registration.
 
 </details>
 
@@ -212,6 +216,8 @@ Keep `COMPOSE_PROFILES=caddy` in `.env`. Caddy manages Let's Encrypt certificate
 | :--- | :--- | :--- | :--- |
 | `https://<domain>/admin*` | `http://headplane:3000` | HTTP | Enable WebSockets |
 | `https://<domain>/*` | `http://headscale:8080` | HTTP | Enable WebSockets, pass `True-Client-IP` |
+
+> **Note for Nginx Proxy Manager (NPM)**: Enable **Websockets Support** and leave **Cache Assets** and **Block Common Exploits** disabled.
 
 <details>
 <summary>View Nginx configuration snippet</summary>
@@ -250,7 +256,7 @@ location / {
 
 Headscale allows relaying traffic when direct WireGuard P2P connections cannot be established through strict NATs:
 
-- **Embedded DERP Server**: Controlled via `DERP_SERVER_ENABLED=true/false` in `.env`. When enabled, Headscale serves STUN on port `3478/udp`.
+- **Embedded DERP Server**: Controlled via `DERP_SERVER_ENABLED=true/false` in `.env`. When enabled, Headscale serves STUN on port `3478/udp`. If you also use an Exit Node, set `derp.server.ipv4` / `derp.server.ipv6` in `config/headscale.yaml` to avoid a DNS deadlock on reconnect.
 - **Global Tailscale DERP Map**: Configured in `config/headscale.yaml` under `derp.urls`.
   - To run in **100% private / air-gapped mode** without sending relay traffic to Tailscale Inc servers, set:
     ```yaml
@@ -267,10 +273,10 @@ Headscale allows relaying traffic when direct WireGuard P2P connections cannot b
 If you configure Headplane with an OIDC provider (Google, GitHub, Keycloak), make sure to remove or bypass Caddy Basic Auth. Basic Auth will intercept `/admin/oidc/callback` and cause OAuth authentication flow failures.
 
 ### Upgrading
-Always back up your data before upgrading. Headscale only supports **one minor version upgrade at a time** (e.g. `0.27` → `0.28` → `0.29`); avoid skipping minor releases when pulling new images on an existing database.
+Always back up your data before upgrading. Headscale only supports **one minor version upgrade at a time** (e.g. `0.28` → `0.29`); avoid skipping minor releases when pulling new images on an existing database.
 
 ### Backup & Restoration
-All persistent state (SQLite database and encryption keys) is stored in the `/var/lib/headscale` directory.
+All persistent VPN state (SQLite database and encryption keys) is stored in `/var/lib/headscale`. *(If you enable OIDC in Headplane, also back up `/var/lib/headplane`.)*
 
 #### Backup
 Briefly stop the service to flush the SQLite WAL journal into the main database, then copy the data directory directly from the container:

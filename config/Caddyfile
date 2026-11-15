@@ -10,7 +10,8 @@ http://{$DOMAIN} {
 }
 
 https://{$DOMAIN} {
-    handle /admin* {
+    @admin path /admin /admin/*
+    handle @admin {
         basic_auth {
             {$ADMIN_USER} {$ADMIN_PASSWORD_HASH}
         }

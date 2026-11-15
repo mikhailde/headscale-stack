@@ -6,7 +6,6 @@ server:
   port: 3000
   base_path: "/admin"
   base_url: "http://localhost:3000"
-  cookie_secret: "0123456789abcdef0123456789abcdef"
   cookie_secure: true
   cookie_max_age: 86400
   data_path: "/var/lib/headplane"
@@ -14,9 +13,3 @@ server:
 headscale:
   url: "http://headscale:8080"
   config_path: "/etc/headscale/config.yaml"
-
-integration:
-  docker:
-    enabled: true
-    container_label: "me.tale.headplane.target=headscale"
-    socket: "unix:///var/run/docker.sock"
