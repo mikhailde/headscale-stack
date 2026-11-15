@@ -217,7 +217,9 @@ Keep `COMPOSE_PROFILES=caddy` in `.env`. Caddy manages Let's Encrypt certificate
 | `https://<domain>/admin*` | `http://headplane:3000` | HTTP | Enable WebSockets |
 | `https://<domain>/*` | `http://headscale:8080` | HTTP | Enable WebSockets, pass `True-Client-IP` |
 
-> **Note for Nginx Proxy Manager (NPM)**: Enable **Websockets Support** and leave **Cache Assets** and **Block Common Exploits** disabled.
+> **Notes**:
+> - **Nginx Proxy Manager (NPM)**: Enable **Websockets Support** and leave **Cache Assets** and **Block Common Exploits** disabled.
+> - **Host-installed proxy**: Skip step 2, bind `127.0.0.1:8080:8080` (`headscale`) and `127.0.0.1:3000:3000` (`headplane`) via `compose.override.yaml`, and target `127.0.0.1` instead of container names.
 
 <details>
 <summary>View Nginx configuration snippet</summary>
