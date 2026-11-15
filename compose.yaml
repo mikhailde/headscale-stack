@@ -12,6 +12,8 @@ services:
     volumes:
       - ./config/headscale.yaml:/etc/headscale/config.yaml:ro
       - headscale-data:/var/lib/headscale
+    tmpfs:
+      - /var/run/headscale
     environment:
       - HEADSCALE_SERVER_URL=https://${DOMAIN}
       - HEADSCALE_DERP_SERVER_ENABLED=${DERP_SERVER_ENABLED:-false}

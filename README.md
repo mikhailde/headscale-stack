@@ -159,6 +159,12 @@ volumes:
   tailscale-state:
 ```
 
+**Linux performance tip** (enables UDP GRO forwarding on the host to prevent exit-node speed throttling):
+```bash
+NETDEV=$(ip -o route get 8.8.8.8 | cut -f 5 -d " ")
+sudo ethtool -K "$NETDEV" rx-udp-gro-forwarding on rx-gro-list off
+```
+
 ### 2. Tailscale Server Node (Host Network Endpoint)
 Use this recipe to join any Docker host directly into your private tailnet:
 
