@@ -123,64 +123,6 @@ tailscale up --login-server https://<your-domain> --auth-key <preauth-key>
 2. Open the menu → **Settings** → **Accounts** → **Use custom control server**.
 3. Enter your server URL: `https://<your-domain>`.
 
-## Reverse Proxy Options
-
-### Option A: Built-in Caddy (Default)
-Keep `COMPOSE_PROFILES=caddy` in `.env`. Caddy manages Let's Encrypt certificates, HTTP-to-HTTPS redirects, `/generate_204` responses, and basic auth out of the box.
-
-### Option B: External Reverse Proxy (Nginx Proxy Manager, Traefik, Host Nginx)
-1. In `.env`, set `COMPOSE_PROFILES=` (empty string).
-2. Connect your external proxy container to the stack network:
-   ```bash
-   docker network connect headscale-net <your-proxy-container-name>
-   ```
-3. Configure your proxy rules:
-
-| Route | Target | Protocol | Notes |
-| :--- | :--- | :--- | :--- |
-| `https://<domain>/admin*` | `http://headplane:3000` | HTTP | Enable WebSockets |
-| `https://<domain>/*` | `http://headscale:8080` | HTTP | Enable WebSockets, pass `True-Client-IP` |
-
-<details>
-<summary>View Nginx configuration snippet</summary>
-
-```nginx
-# Pass real client IP to Headscale
-proxy_set_header True-Client-IP $remote_addr;
-proxy_set_header X-Real-IP $remote_addr;
-proxy_set_header Upgrade $http_upgrade;
-proxy_set_header Connection $http_connection;
-proxy_http_version 1.1;
-
-# Captive portal detection for mobile devices
-location = /generate_204 {
-    return 204;
-}
-
-# Headplane Web UI
-location /admin {
-    proxy_pass http://headplane:3000;
-}
-
-# Headscale VPN Control Plane
-location / {
-    proxy_pass http://headscale:8080;
-}
-```
-</details>
-
-## DERP (Relay) Configuration
-
-Headscale allows relaying traffic when direct WireGuard P2P connections cannot be established through strict NATs:
-
-- **Embedded DERP Server**: Controlled via `DERP_SERVER_ENABLED=true/false` in `.env`. When enabled, Headscale serves STUN on port `3478/udp`.
-- **Global Tailscale DERP Map**: Configured in `config/headscale.yaml` under `derp.urls`. 
-  - To run in **100% private / air-gapped mode** without sending relay traffic to Tailscale Inc servers, set:
-    ```yaml
-    derp:
-      urls: []
-    ```
-
 <details>
 <summary>Client Deployment Recipes (Exit Nodes & Server Nodes)</summary>
 
@@ -240,7 +182,67 @@ services:
 volumes:
   tailscale-state:
 ```
+
 </details>
+
+## Reverse Proxy Options
+
+### Option A: Built-in Caddy (Default)
+Keep `COMPOSE_PROFILES=caddy` in `.env`. Caddy manages Let's Encrypt certificates, HTTP-to-HTTPS redirects, `/generate_204` responses, and basic auth out of the box.
+
+### Option B: External Reverse Proxy (Nginx Proxy Manager, Traefik, Host Nginx)
+1. In `.env`, set `COMPOSE_PROFILES=` (empty string).
+2. Connect your external proxy container to the stack network:
+   ```bash
+   docker network connect headscale-net <your-proxy-container-name>
+   ```
+3. Configure your proxy rules:
+
+| Route | Target | Protocol | Notes |
+| :--- | :--- | :--- | :--- |
+| `https://<domain>/admin*` | `http://headplane:3000` | HTTP | Enable WebSockets |
+| `https://<domain>/*` | `http://headscale:8080` | HTTP | Enable WebSockets, pass `True-Client-IP` |
+
+<details>
+<summary>View Nginx configuration snippet</summary>
+
+```nginx
+# Pass real client IP to Headscale
+proxy_set_header True-Client-IP $remote_addr;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection $http_connection;
+proxy_http_version 1.1;
+
+# Captive portal detection for mobile devices
+location = /generate_204 {
+    return 204;
+}
+
+# Headplane Web UI
+location /admin {
+    proxy_pass http://headplane:3000;
+}
+
+# Headscale VPN Control Plane
+location / {
+    proxy_pass http://headscale:8080;
+}
+```
+
+</details>
+
+## DERP (Relay) Configuration
+
+Headscale allows relaying traffic when direct WireGuard P2P connections cannot be established through strict NATs:
+
+- **Embedded DERP Server**: Controlled via `DERP_SERVER_ENABLED=true/false` in `.env`. When enabled, Headscale serves STUN on port `3478/udp`.
+- **Global Tailscale DERP Map**: Configured in `config/headscale.yaml` under `derp.urls`.
+  - To run in **100% private / air-gapped mode** without sending relay traffic to Tailscale Inc servers, set:
+    ```yaml
+    derp:
+      urls: []
+    ```
 
 ## Security & Maintenance
 
