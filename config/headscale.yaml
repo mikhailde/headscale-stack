@@ -65,7 +65,7 @@ log:
   format: text
 
 policy:
-  mode: file
+  mode: database
   path: ""
 
 dns:

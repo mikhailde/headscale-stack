@@ -143,10 +143,13 @@ services:
     sysctls:
       - net.ipv4.ip_forward=1
       - net.ipv6.conf.all.forwarding=1
+    ports:
+      - "41641:41641/udp"
     volumes:
       - tailscale-state:/var/lib/tailscale
     environment:
       - TS_AUTHKEY=replace_with_preauth_key
+      - TS_AUTH_ONCE=true
       - TS_HOSTNAME=exit-node
       - TS_USERSPACE=false
       - TS_STATE_DIR=/var/lib/tailscale
@@ -175,10 +178,11 @@ services:
       - tailscale-state:/var/lib/tailscale
     environment:
       - TS_AUTHKEY=replace_with_preauth_key
+      - TS_AUTH_ONCE=true
       - TS_HOSTNAME=server-main
       - TS_USERSPACE=false
       - TS_STATE_DIR=/var/lib/tailscale
-      - TS_EXTRA_ARGS=--login-server=https://<your-domain> --reset
+      - TS_EXTRA_ARGS=--login-server=https://<your-domain>
 volumes:
   tailscale-state:
 ```
@@ -207,12 +211,16 @@ Keep `COMPOSE_PROFILES=caddy` in `.env`. Caddy manages Let's Encrypt certificate
 <summary>View Nginx configuration snippet</summary>
 
 ```nginx
-# Pass real client IP to Headscale
-proxy_set_header True-Client-IP $remote_addr;
-proxy_set_header X-Real-IP $remote_addr;
+# Pass real client IP and WebSocket upgrades
+proxy_http_version 1.1;
+proxy_set_header Host $host;
 proxy_set_header Upgrade $http_upgrade;
 proxy_set_header Connection $http_connection;
-proxy_http_version 1.1;
+proxy_set_header True-Client-IP $remote_addr;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_buffering off;
+proxy_read_timeout 1d;
+proxy_send_timeout 1d;
 
 # Captive portal detection for mobile devices
 location = /generate_204 {
@@ -251,6 +259,9 @@ Headscale allows relaying traffic when direct WireGuard P2P connections cannot b
 
 ### Single Sign-On (OIDC/SSO)
 If you configure Headplane with an OIDC provider (Google, GitHub, Keycloak), make sure to remove or bypass Caddy Basic Auth. Basic Auth will intercept `/admin/oidc/callback` and cause OAuth authentication flow failures.
+
+### Upgrading
+Always back up your data before upgrading. Headscale only supports **one minor version upgrade at a time** (e.g. `0.27` → `0.28` → `0.29`); avoid skipping minor releases when pulling new images on an existing database.
 
 ### Backup & Restoration
 All persistent state (SQLite database and encryption keys) is stored in the `/var/lib/headscale` directory.
