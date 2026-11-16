@@ -23,7 +23,7 @@
 ## Features
 
 - **100% Declarative & GitOps-Ready**: No host-level bash scripts or runtime string manipulations. The entire stack is configured via a single `.env` file.
-- **Modern Web Interface**: Bundled with [Headplane](https://github.com/tale/headplane) for visual node management, ACL configuration, and MagicDNS controls.
+- **Modern Web Interface**: Bundled with [Headplane](https://github.com/tale/headplane) for visual node management, ACL configuration, and read-only MagicDNS & config view.
 - **Zero-Config Automatic TLS**: Built-in [Caddy](https://caddyserver.com/) reverse proxy provisions and renews Let's Encrypt / ZeroSSL certificates automatically.
 - **Flexible Ingress**: Run the built-in Caddy proxy (`COMPOSE_PROFILES=caddy`) or seamlessly connect your existing Nginx Proxy Manager, Traefik, or host Nginx.
 - **Container Health & Order**: Headscale health checks (`headscale health`) ensure Headplane boots strictly when the control plane and database are ready.
@@ -104,7 +104,7 @@ Open `https://<your-domain>/admin/` in your browser:
 1. Log in via HTTP Basic Auth using your configured `ADMIN_USER` and password.
 2. Enter the generated API key into Headplane to access the dashboard.
 3. Create your first user under **Users** (e.g. `default`). Clients require an existing user to register.
-4. Configure and save an access policy under **Access Control (ACL)**. By default, `policy.mode: database` permits all-to-all traffic until a policy is saved.
+4. Configure and save an access policy under **Access Control (ACL)** before connecting devices. By default, `policy.mode: database` permits all-to-all traffic until a policy is saved.
 
 ## Connecting Devices
 
@@ -236,13 +236,16 @@ proxy_buffering off;
 proxy_read_timeout 1d;
 proxy_send_timeout 1d;
 
-# Captive portal detection for mobile devices
+# Captive portal detection (place in port 80 server block before HTTPS redirect)
 location = /generate_204 {
     return 204;
 }
 
 # Headplane Web UI
-location /admin {
+location = /admin {
+    return 301 /admin/;
+}
+location ^~ /admin/ {
     proxy_pass http://headplane:3000;
 }
 
@@ -289,7 +292,7 @@ docker compose start headscale
 ```
 
 #### Restore
-To restore from a backup directory:
+To restore from backup directory *(restore into a clean volume, or remove any stale `db.sqlite-wal` / `db.sqlite-shm` files first)*:
 ```bash
 docker compose stop headscale
 docker compose cp ./headscale_backup_<timestamp>/. headscale:/var/lib/headscale/

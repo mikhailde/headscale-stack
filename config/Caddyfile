@@ -15,7 +15,9 @@ https://{$DOMAIN} {
         basic_auth {
             {$ADMIN_USER} {$ADMIN_PASSWORD_HASH}
         }
-        reverse_proxy headplane:3000
+        reverse_proxy headplane:3000 {
+            header_up -Authorization
+        }
     }
 
     handle {

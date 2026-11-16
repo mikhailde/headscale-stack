@@ -16,6 +16,7 @@ services:
       - headscale-data:/var/lib/headscale
     tmpfs:
       - /var/run/headscale
+      - /tmp:rw,noexec,nosuid,size=64m
     environment:
       - HEADSCALE_SERVER_URL=https://${DOMAIN}
       - HEADSCALE_DERP_SERVER_ENABLED=${DERP_SERVER_ENABLED:-false}
